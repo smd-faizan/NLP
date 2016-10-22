@@ -1,6 +1,6 @@
 # NLP
 
-## Project dependencies are:
+## Project dependencies can be downloaded from:
 
 Stanford parser jars can be found in the file - http://nlp.stanford.edu/software/stanford-parser-full-2015-12-09.zip
 
