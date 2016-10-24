@@ -1,17 +1,13 @@
 package com.commonSense;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
@@ -37,6 +33,7 @@ import edu.stanford.nlp.trees.TypedDependency;
 public class DependencyExtractor {
 	
 	static Logger log = Logger.getLogger(DependencyExtractor.class.getName());
+	static long count = 0;
 	TreebankLanguagePack tlp = new PennTreebankLanguagePack();
 	GrammaticalStructureFactory gsf = tlp.grammaticalStructureFactory();
 	Properties prop = null;
@@ -45,6 +42,7 @@ public class DependencyExtractor {
 	private final TokenizerFactory<CoreLabel> tokenizerFactory = PTBTokenizer.factory(new CoreLabelTokenFactory(),
 			"invertible=true");
 	public LexicalizedParser parser = null;
+	private List<HasWord> currentSentence;
 	
 	public Tree parse(String str) {
 		List<CoreLabel> tokens = tokenize(str);
@@ -52,13 +50,13 @@ public class DependencyExtractor {
 		return tree;
 	}
 	
-	public List<Tree> parseFromFile(LexicalizedParser lp, String fileUrl) {
+	public void parseFromFile(LexicalizedParser lp, File currentFile) {
 		List<Tree> result = new ArrayList<Tree>();
-		for(List<HasWord> sentence : new DocumentPreprocessor(fileUrl)) {
-			Tree parse = lp.apply(sentence);
-			result.add(parse);
+		for(List<HasWord> sentence : new DocumentPreprocessor(currentFile.getAbsolutePath())) {
+			currentSentence = sentence;
+			Tree tree = lp.apply(sentence);
+			getKnowledgeFromTree(currentFile, tree);
 		}
-		return result;
 	}
 	
 	public List<CoreLabel> tokenize(String str) {
@@ -103,10 +101,7 @@ public class DependencyExtractor {
 		while(iter.hasNext()){
 			File currentFile = iter.next();
 			// parses the whole while and returns trees for every sentence
-			List<Tree> treeList = parseFromFile(parser, currentFile.getAbsolutePath());
-				for(Tree t : treeList){
-					getKnowledgeFromTree(currentFile, t);
-				}
+			parseFromFile(parser, currentFile);
 		}
 						
 	}
@@ -146,172 +141,95 @@ public class DependencyExtractor {
 					}
 					// if nsubj(verb1) == nsubj(verb2), then print it
 					if(nsubjverb1 != null && nsubjverb2 != null && nsubjverb1.toString().equals(nsubjverb2.toString())){
-						IndexedWord neg1 = null;
-					  IndexedWord neg2 = null;
-						for(TypedDependency dependency3: dependencyList){
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb1)==0)
-								neg1=dependency3.dep();
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb2)==0)
-								neg2=dependency3.dep();
-						}
-						log.info("#########################");
-						log.info("###Found Knowledge###");
-						log.info("#File Name [ "+currentFile.getName()+" ] #");
-					  log.info("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  System.out.println("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  if(neg1 != null && neg2 != null){
-							log.info(neg1+" "+verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println(neg1+" "+verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println("not verb 1 dobj = not verb 2 dobj");
-							log.info("not verb 1 dobj = not verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 == null){
-							log.info(verb1+" "+nsubjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println(verb1+" "+nsubjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println("verb 1 dobj = verb 2 dobj");
-							log.info("verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 != null && neg2 == null){
-							log.info(neg1+" "+verb1+" "+nsubjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println(neg1+" "+verb1+" "+nsubjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println("not verb 1 dobj = verb 2 dobj");
-							log.info("not verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 != null){
-							log.info(verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println(verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println("verb 1 dobj = not verb 2 dobj");
-							log.info("verb 1 dobj = not verb 2 dobj");
-						}
-						log.info("#########################");
+						printOutput(currentFile, dependencyList, verb1, verb2, nsubjverb1, nsubjverb2, "nsubj",  "nsubj");
 					}
 					// if nsubj(verb1) == dobj(verb2), then print it
 					if(nsubjverb1 != null && dobjverb2 !=null && nsubjverb1.toString().equals(dobjverb2.toString())){
-						IndexedWord neg1 = null;
-					  IndexedWord neg2 = null;
-						for(TypedDependency dependency3: dependencyList){
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb1)==0)
-								neg1=dependency3.dep();
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb2)==0)
-								neg2=dependency3.dep();
-						}
-						log.info("#########################");
-						log.info("###Found Knowledge###");
-						log.info("#File Name [ "+currentFile.getName()+" ] #");
-					  log.info("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  System.out.println("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  if(neg1 != null && neg2 != null){
-							log.info(neg1+" "+verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println(neg1+" "+verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println("not verb 1 dobj = not verb 2 dobj");
-							log.info("not verb 1 dobj = not verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 == null){
-							log.info(verb1+" "+nsubjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println(verb1+" "+nsubjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println("verb 1 dobj = verb 2 dobj");
-							log.info("verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 != null && neg2 == null){
-							log.info(neg1+" "+verb1+" "+nsubjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println(neg1+" "+verb1+" "+nsubjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println("not verb 1 dobj = verb 2 dobj");
-							log.info("not verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 != null){
-							log.info(verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println(verb1+" "+nsubjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println("verb 1 dobj = not verb 2 dobj");
-							log.info("verb 1 dobj = not verb 2 dobj");
-						}
-					  log.info("#########################");
+						printOutput(currentFile, dependencyList, verb1, verb2, nsubjverb1, dobjverb2, "nsubj",  "dobj");
 					}
 					// if dobj(verb1) == dobj(verb2), then print it
 					if(dobjverb1 != null && dobjverb2!=null && dobjverb1.toString().equals((dobjverb2.toString()))){
-						IndexedWord neg1 = null;
-					  IndexedWord neg2 = null;
-						for(TypedDependency dependency3: dependencyList){
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb1)==0)
-								neg1=dependency3.dep();
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb2)==0)
-								neg2=dependency3.dep();
-						}
-						log.info("#########################");
-						log.info("###Found Knowledge###");
-						log.info("#File Name [ "+currentFile.getName()+" ] #");
-					  log.info("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  System.out.println("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-						if(neg1 != null && neg2 != null){
-							log.info(neg1+" "+verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println(neg1+" "+verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println("not verb 1 dobj = not verb 2 dobj");
-							log.info("not verb 1 dobj = not verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 == null){
-							log.info(verb1+" "+dobjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println(verb1+" "+dobjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println("verb 1 dobj = verb 2 dobj");
-							log.info("verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 != null && neg2 == null){
-							log.info(neg1+" "+verb1+" "+dobjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println(neg1+" "+verb1+" "+dobjverb1+" => "+verb2+" "+" "+dobjverb2);
-							System.out.println("not verb 1 dobj = verb 2 dobj");
-							log.info("not verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 != null){
-							log.info(verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println(verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+dobjverb2);
-							System.out.println("verb 1 dobj = not verb 2 dobj");
-							log.info("verb 1 dobj = not verb 2 dobj");
-						}
-						log.info("#########################");
+						printOutput(currentFile, dependencyList, verb1, verb2, dobjverb1, dobjverb2, "dobj",  "dobj");
 					}
 					// if dobj(verb1) == nsubj(verb2), then print it
 					if(dobjverb1 != null && nsubjverb2!=null && dobjverb1.toString().equals(nsubjverb2.toString())){
-						IndexedWord neg1 = null;
-					  IndexedWord neg2 = null;
-						for(TypedDependency dependency3: dependencyList){
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb1)==0)
-								neg1=dependency3.dep();
-							if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb2)==0)
-								neg2=dependency3.dep();
-						}
-						log.info("#########################");
-						log.info("###Found Knowledge###");
-						log.info("#File Name [ "+currentFile.getName()+" ] #");
-					  log.info("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  System.out.println("#Sentence that gave knowledge [ "+t.flatten()+" ]#");
-					  if(neg1 != null && neg2 != null){
-							log.info(neg1+" "+verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println(neg1+" "+verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println("not verb 1 dobj = not verb 2 dobj");
-							log.info("not verb 1 dobj = not verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 == null){
-							log.info(verb1+" "+dobjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println(verb1+" "+dobjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println("verb 1 dobj = verb 2 dobj");
-							log.info("verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 != null && neg2 == null){
-							log.info(neg1+" "+verb1+" "+dobjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println(neg1+" "+verb1+" "+dobjverb1+" => "+verb2+" "+" "+nsubjverb2);
-							System.out.println("not verb 1 dobj = verb 2 dobj");
-							log.info("not verb 1 dobj = verb 2 dobj");
-						}
-						else if(neg1 == null && neg2 != null){
-							log.info(verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println(verb1+" "+dobjverb1+" => "+neg2+" "+verb2+" "+" "+nsubjverb2);
-							System.out.println("verb 1 dobj = not verb 2 nsubj");
-							log.info("verb 1 dobj = not verb 2 nsubj");
-						}
-						log.info("#########################");
+						printOutput(currentFile, dependencyList, verb1, verb2, dobjverb1, nsubjverb2, "dobj",  "nsubj");
 					}
 					
 				}
 			}
 		}
+	}
+
+	/**
+	 * @param currentFile
+	 * @param t
+	 * @param dependencyList
+	 * @param verb1
+	 * @param verb2
+	 * @param nsubjverb1
+	 * @param nsubjverb2
+	 */
+	private void printOutput(	File currentFile,
+														List<TypedDependency> dependencyList,
+														IndexedWord verb1, IndexedWord verb2,
+														IndexedWord nsubjverb1, IndexedWord nsubjverb2,
+														String verb1GramRel, String verb2GramRel) {
+		// found 1 knowledge, increment count;
+		count++;
+		IndexedWord neg1 = null;
+		IndexedWord neg2 = null;
+		//get negations for verb1 and verb2 if any
+		for(TypedDependency dependency3: dependencyList){
+			if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb1)==0)
+				neg1=dependency3.dep();
+			if(dependency3.reln().getShortName().equals("neg") && dependency3.gov().compareTo(verb2)==0)
+				neg2=dependency3.dep();
+		}
+		// compare subject objects of both verbs and print output
+		log.info("#########################");
+		log.info("###Found Knowledge###");
+		log.info("#File Name [ "+currentFile.getName()+" ] #");
+		String sentenceinString = extractSentence(currentSentence);
+		log.info(count+". Sentence that gave knowledge [ "+sentenceinString+" ]#");
+		System.out.println(count+". Sentence that gave knowledge [ "+sentenceinString+" ]#");
+		if(neg1 != null && neg2 != null){
+			log.info(neg1.word()+" "+verb1.word()+" "+nsubjverb1.word()+" => "+neg2.word()+" "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println(neg1.word()+" "+verb1.word()+" "+nsubjverb1.word()+" => "+neg2.word()+" "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println("not verb 1 "+verb1GramRel+" = not verb 2 "+verb2GramRel);
+			log.info("not verb 1 "+verb1GramRel+" = not verb 2 "+verb2GramRel);
+		}
+		else if(neg1 == null && neg2 == null){
+			log.info(verb1.word()+" "+nsubjverb1.word()+" => "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println(verb1.word()+" "+nsubjverb1.word()+" => "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println("verb 1 "+verb1GramRel+" = verb 2 "+verb2GramRel);
+			log.info("verb 1 "+verb1GramRel+" = verb 2 "+verb2GramRel);
+		}
+		else if(neg1 != null && neg2 == null){
+			log.info(neg1.word()+" "+verb1.word()+" "+nsubjverb1.word()+" => "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println(neg1.word()+" "+verb1.word()+" "+nsubjverb1.word()+" => "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println("not verb 1 "+verb1GramRel+" = verb 2 "+verb2GramRel);
+			log.info("not verb 1 "+verb1GramRel+" = verb 2 "+verb2GramRel);
+		}
+		else if(neg1 == null && neg2 != null){
+			log.info(verb1.word()+" "+nsubjverb1.word()+" => "+neg2.word()+" "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println(verb1.word()+" "+nsubjverb1.word()+" => "+neg2.word()+" "+verb2.word()+" "+" "+nsubjverb2.word());
+			System.out.println("verb 1 "+verb1GramRel+" = not verb 2 "+verb2GramRel);
+			log.info("verb 1 "+verb1GramRel+" = not verb 2 "+verb2GramRel);
+		}
+		log.info("##### knowledge count: "+count+"#####");
+		log.info("#########################");
+	}
+
+	/**
+	 * @return
+	 */
+	private static String extractSentence(List<HasWord> currentSentence) {
+		String sentenceinString = "";
+		for(HasWord w: currentSentence){
+			sentenceinString = sentenceinString+w.word() + " ";
+		}
+		return sentenceinString;
 	}
 	
 	

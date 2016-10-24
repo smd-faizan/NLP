@@ -4,4 +4,6 @@ inputs/**/*
 inputs/*
 prj_dep_jars/*
 *~
+.project
+.classpath
 
