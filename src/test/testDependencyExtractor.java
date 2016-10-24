@@ -10,7 +10,6 @@ import edu.stanford.nlp.trees.Tree;
 public class testDependencyExtractor {
 public static void main(String[] args) {
 
-	  String PCG_MODEL = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
 		
 		DependencyExtractor dependencyExtractor = new DependencyExtractor();
 		//dependencyExtractor.parser = LexicalizedParser.loadModel(PCG_MODEL);
